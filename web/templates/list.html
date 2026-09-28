@@ -1,0 +1,21 @@
+{{define "content"}}
+
+<h2>Мои расходы</h2>
+
+<a href="/expenses/new">Добавить расход</a>
+
+{{if .}}
+<ul>
+    {{range .}}
+    <li>
+        {{.Date.Format "02.01.2006"}} —
+        {{.Description}} —
+        {{.Amount}} €
+    </li>
+    {{end}}
+</ul>
+{{else}}
+<p>Расходов пока нет.</p>
+{{end}}
+
+{{end}}

@@ -1,0 +1,26 @@
+{{define "content"}}
+
+<h2>Добавить расход</h2>
+
+<form method="POST" action="/expenses">
+    <label>
+        Сумма:
+        <input type="number" name="amount" step="0.01" required>
+    </label>
+
+    <label>
+        Описание:
+        <input type="text" name="description" required>
+    </label>
+
+    <label>
+        Дата:
+        <input type="date" name="date" required>
+    </label>
+
+    <button type="submit">Добавить</button>
+</form>
+
+<a href="/expenses">Назад к расходам</a>
+
+{{end}}
