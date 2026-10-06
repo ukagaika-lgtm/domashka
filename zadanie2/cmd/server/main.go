@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"expense-server/internal/handlers"
+	"expense-server/zadanie2/internal/handlers"
 )
 
 func main() {

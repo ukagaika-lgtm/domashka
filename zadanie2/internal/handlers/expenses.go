@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"expense-server/internal/models"
+	"expense-server/zadanie2/internal/models"
 )
 
 var expenses []models.Expense
