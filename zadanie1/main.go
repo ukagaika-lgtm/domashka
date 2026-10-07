@@ -6,6 +6,12 @@ import (
 )
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
+	// "/" в ServeMux совпадает с любым путём, поэтому неизвестные URL отдаём как 404
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return

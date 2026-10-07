@@ -2,18 +2,27 @@
 
 <h2>Мои расходы</h2>
 
-<a href="/expenses/new">Добавить расход</a>
+<p><a href="/expenses/new">Добавить расход</a></p>
 
 {{if .}}
-<ul>
+<table>
+    <thead>
+        <tr>
+            <th>Дата</th>
+            <th>Описание</th>
+            <th>Сумма</th>
+        </tr>
+    </thead>
+    <tbody>
     {{range .}}
-    <li>
-        {{.Date.Format "02.01.2006"}} —
-        {{.Description}} —
-        {{.Amount}} €
-    </li>
+        <tr>
+            <td>{{.Date.Format "02.01.2006"}}</td>
+            <td>{{.Description}}</td>
+            <td>{{printf "%.2f" .Amount}} €</td>
+        </tr>
     {{end}}
-</ul>
+    </tbody>
+</table>
 {{else}}
 <p>Расходов пока нет.</p>
 {{end}}

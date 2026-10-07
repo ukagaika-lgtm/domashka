@@ -1,16 +1,28 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 
-	"expense-server/zadanie2/internal/handlers"
+	"zadanie2/internal/handlers"
 )
 
 func main() {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/expenses", handlers.ExpensesHandler)
-	mux.HandleFunc("/expenses/new", handlers.ExpensesHandler)
+	// Маршруты первого этапа
+	mux.HandleFunc("/", handlers.HomeHandler)
+	mux.HandleFunc("/about", handlers.AboutHandler)
+	mux.HandleFunc("/ping", handlers.PingHandler)
 
-	http.ListenAndServe(":8080", mux)
+	// Маршруты второго этапа
+	mux.HandleFunc("/expenses", handlers.ExpensesHandler)       // GET — список, POST — добавление
+	mux.HandleFunc("/expenses/new", handlers.NewExpenseHandler) // GET — форма
+
+	// Статика (style.css)
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
+
+	fmt.Println("Сервер запущен на http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
