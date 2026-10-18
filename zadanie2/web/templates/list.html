@@ -1,30 +1,27 @@
 {{define "content"}}
-
-<h2>Мои расходы</h2>
-
-<p><a href="/expenses/new">Добавить расход</a></p>
-
-{{if .}}
+{{if .Expenses}}
 <table>
-    <thead>
-        <tr>
-            <th>Дата</th>
-            <th>Описание</th>
-            <th>Сумма</th>
-        </tr>
-    </thead>
-    <tbody>
-    {{range .}}
-        <tr>
-            <td>{{.Date.Format "02.01.2006"}}</td>
-            <td>{{.Description}}</td>
-            <td>{{printf "%.2f" .Amount}} €</td>
-        </tr>
-    {{end}}
-    </tbody>
+  <thead>
+    <tr><th>Дата</th><th>Описание</th><th>Сумма, ₽</th><th></th></tr>
+  </thead>
+  <tbody>
+  {{range .Expenses}}
+    <tr>
+      <td>{{.Date.Format "02.01.2006"}}</td>
+      <td>{{.Description}}</td>
+      <td class="num">{{printf "%.2f" .Amount}}</td>
+      <td class="actions">
+        <a href="/expenses/{{.ID}}/edit">Изменить</a>
+        <form method="POST" action="/expenses/{{.ID}}/delete"
+              onsubmit="return confirm('Удалить эту трату?');">
+          <button type="submit" class="danger">Удалить</button>
+        </form>
+      </td>
+    </tr>
+  {{end}}
+  </tbody>
 </table>
 {{else}}
-<p>Расходов пока нет.</p>
+<p>Трат пока нет. <a href="/expenses/new">Добавьте первую</a>.</p>
 {{end}}
-
 {{end}}

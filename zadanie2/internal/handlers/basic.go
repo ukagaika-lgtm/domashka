@@ -5,39 +5,20 @@ import (
 	"net/http"
 )
 
-// HomeHandler — главная страница (этап 1).
-func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintln(w, `<p>Привет! Это мой Go-сервер для учёта расходов.</p><p><a href="/expenses">Перейти к расходам</a></p>`)
+func Home(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Привет! Это приложение «Учёт личных трат». Список трат: /expenses")
 }
 
-// AboutHandler — описание проекта (этап 1).
-func AboutHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprintln(w, "Это мой учебный проект на Go: веб-приложение для учёта личных расходов.")
+func About(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Учебный проект на Go: учёт личных трат с хранением данных в SQLite.")
 }
 
-// PingHandler — проверка работы сервера, только GET (этап 1).
-func PingHandler(w http.ResponseWriter, r *http.Request) {
+// Ping вручную проверяет метод (так требует этап 1).
+func Ping(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "Метод не поддерживается", http.StatusMethodNotAllowed)
 		return
 	}
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprintln(w, "pong")
+	fmt.Fprint(w, "pong")
 }

@@ -1,31 +1,16 @@
-body {
-    font-family: Arial, sans-serif;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-nav a {
-    margin-right: 12px;
-}
-
-table {
-    border-collapse: collapse;
-    width: 100%;
-    margin-top: 12px;
-}
-
-th, td {
-    border: 1px solid #ccc;
-    padding: 6px 10px;
-    text-align: left;
-}
-
-form label {
-    display: block;
-    margin-bottom: 10px;
-}
-
-button {
-    padding: 6px 14px;
-}
+body { font-family: system-ui, sans-serif; margin: 0; background: #f6f7f9; color: #222; }
+header { background: #2d6cdf; padding: 12px 24px; }
+nav a { color: #fff; margin-right: 16px; text-decoration: none; font-weight: 600; }
+main { max-width: 800px; margin: 24px auto; padding: 0 16px; }
+table { width: 100%; border-collapse: collapse; background: #fff; }
+th, td { padding: 8px 12px; border-bottom: 1px solid #e3e3e3; text-align: left; }
+td.num { text-align: right; }
+td.actions { display: flex; gap: 12px; align-items: center; }
+td.actions form { margin: 0; }
+.expense-form { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
+.expense-form label { display: flex; flex-direction: column; gap: 4px; }
+input, button { font: inherit; padding: 6px 10px; }
+button { cursor: pointer; background: #2d6cdf; color: #fff; border: 0; border-radius: 4px; }
+button.danger { background: #d9534f; }
+.buttons { display: flex; gap: 16px; align-items: center; }
+.error { color: #b00020; background: #fdecea; padding: 8px 12px; border-radius: 4px; }

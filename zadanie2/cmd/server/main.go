@@ -1,28 +1,49 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
+	"zadanie2/internal/database"
 	"zadanie2/internal/handlers"
+	"zadanie2/internal/repository"
 )
 
 func main() {
+	db, err := database.Open("expenses.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	if err := database.Migrate(db, "migrations"); err != nil {
+		log.Fatal(err)
+	}
+
+	repo := repository.NewExpenseRepository(db)
+	expenses, err := handlers.NewExpenseHandler(repo, "web/templates")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	mux := http.NewServeMux()
 
-	// Маршруты первого этапа
-	mux.HandleFunc("/", handlers.HomeHandler)
-	mux.HandleFunc("/about", handlers.AboutHandler)
-	mux.HandleFunc("/ping", handlers.PingHandler)
+	// Этап 1
+	mux.HandleFunc("GET /{$}", handlers.Home)
+	mux.HandleFunc("GET /about", handlers.About)
+	mux.HandleFunc("/ping", handlers.Ping)
 
-	// Маршруты второго этапа
-	mux.HandleFunc("/expenses", handlers.ExpensesHandler)       // GET — список, POST — добавление
-	mux.HandleFunc("/expenses/new", handlers.NewExpenseHandler) // GET — форма
+	// Статика
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
-	// Статика (style.css)
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
+	// Траты (CRUD)
+	mux.HandleFunc("GET /expenses", expenses.List)
+	mux.HandleFunc("GET /expenses/new", expenses.NewForm)
+	mux.HandleFunc("POST /expenses", expenses.Create)
+	mux.HandleFunc("GET /expenses/{id}/edit", expenses.EditForm)
+	mux.HandleFunc("POST /expenses/{id}/edit", expenses.Update)
+	mux.HandleFunc("POST /expenses/{id}/delete", expenses.Delete)
 
-	fmt.Println("Сервер запущен на http://localhost:8080")
+	log.Println("Сервер запущен: http://localhost:8080/expenses")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
