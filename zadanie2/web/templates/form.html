@@ -10,6 +10,13 @@
   <label>Дата
     <input type="date" name="date" value="{{.Date}}" required>
   </label>
+  <label>Категория
+    <select name="category_id" required>
+      {{range .Categories}}
+        <option value="{{.ID}}"{{if eq .ID $.CategoryID}}selected{{end}}>{{.Name}}</option>
+      {{end}}
+    </select>
+  </label>
   <div class="buttons">
     <button type="submit">Сохранить</button>
     <a href="/expenses">Отмена</a>

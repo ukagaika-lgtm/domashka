@@ -25,8 +25,8 @@ func NewExpenseRepository(db *sql.DB) *ExpenseRepository {
 
 func (r *ExpenseRepository) Create(e *models.Expense) error {
 	res, err := r.db.Exec(
-		`INSERT INTO expenses (amount, description, date) VALUES (?, ?, ?)`,
-		e.Amount, e.Description, e.Date.Format(dateLayout),
+		`INSERT INTO expenses (amount, description, date, category_id) VALUES (?, ?, ?, ?)`,
+		e.Amount, e.Description, e.Date.Format(dateLayout), e.CategoryID,
 	)
 	if err != nil {
 		return fmt.Errorf("создание траты: %w", err)
@@ -40,8 +40,13 @@ func (r *ExpenseRepository) Create(e *models.Expense) error {
 }
 
 func (r *ExpenseRepository) GetAll() ([]models.Expense, error) {
-	rows, err := r.db.Query(
-		`SELECT id, amount, description, date FROM expenses ORDER BY date DESC, id DESC`)
+	rows, err := r.db.Query(`
+		SELECT e.id, e.amount, e.description, e.date,
+		       e.category_id, c.name
+		FROM expenses e
+		JOIN categories c ON c.id = e.category_id
+		ORDER BY e.date DESC, e.id DESC
+	`)
 	if err != nil {
 		return nil, fmt.Errorf("получение трат: %w", err)
 	}
@@ -49,21 +54,39 @@ func (r *ExpenseRepository) GetAll() ([]models.Expense, error) {
 
 	var expenses []models.Expense
 	for rows.Next() {
-		e, err := scanExpense(rows)
+		var e models.Expense
+		var date string
+
+		err := rows.Scan(
+			&e.ID,
+			&e.Amount,
+			&e.Description,
+			&date,
+			&e.CategoryID,
+			&e.CategoryName,
+		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("чтение траты: %w", err)
 		}
+
+		e.Date, err = time.Parse("2006-01-02", date)
+		if err != nil {
+			return nil, fmt.Errorf("преобразование даты: %w", err)
+		}
+
 		expenses = append(expenses, e)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("перебор трат: %w", err)
 	}
+
 	return expenses, nil
 }
 
 func (r *ExpenseRepository) GetByID(id int64) (models.Expense, error) {
 	row := r.db.QueryRow(
-		`SELECT id, amount, description, date FROM expenses WHERE id = ?`, id)
+		`SELECT id, amount, description, date, category_id FROM expenses WHERE id = ?`, id)
 	e, err := scanExpense(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.Expense{}, ErrNotFound
@@ -73,8 +96,8 @@ func (r *ExpenseRepository) GetByID(id int64) (models.Expense, error) {
 
 func (r *ExpenseRepository) Update(e models.Expense) error {
 	res, err := r.db.Exec(
-		`UPDATE expenses SET amount = ?, description = ?, date = ? WHERE id = ?`,
-		e.Amount, e.Description, e.Date.Format(dateLayout), e.ID,
+		`UPDATE expenses SET amount = ?, description = ?, date = ?, category_id = ? WHERE id = ?`,
+		e.Amount, e.Description, e.Date.Format(dateLayout), e.CategoryID, e.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("обновление траты: %w", err)
@@ -98,7 +121,7 @@ type scanner interface {
 func scanExpense(s scanner) (models.Expense, error) {
 	var e models.Expense
 	var date string
-	if err := s.Scan(&e.ID, &e.Amount, &e.Description, &date); err != nil {
+	if err := s.Scan(&e.ID, &e.Amount, &e.Description, &date, &e.CategoryID); err != nil {
 		return e, fmt.Errorf("чтение траты: %w", err)
 	}
 	t, err := time.Parse(dateLayout, date)
@@ -118,4 +141,73 @@ func checkAffected(res sql.Result) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+func (r *ExpenseRepository) GetFiltered(
+	categoryID int64,
+	from string,
+	to string,
+) ([]models.Expense, error) {
+	query := `
+		SELECT e.id, e.amount, e.description, e.date,
+		       e.category_id, c.name
+		FROM expenses e
+		JOIN categories c ON c.id = e.category_id
+		WHERE 1 = 1
+	`
+	var args []any
+
+	if categoryID > 0 {
+		query += " AND e.category_id = ?"
+		args = append(args, categoryID)
+	}
+
+	if from != "" {
+		query += " AND e.date >= ?"
+		args = append(args, from)
+	}
+
+	if to != "" {
+		query += " AND e.date <= ?"
+		args = append(args, to)
+	}
+
+	query += " ORDER BY e.date DESC, e.id DESC"
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("получение отфильтрованных трат: %w", err)
+	}
+	defer rows.Close()
+
+	var expenses []models.Expense
+	for rows.Next() {
+		var e models.Expense
+		var date string
+
+		err := rows.Scan(
+			&e.ID,
+			&e.Amount,
+			&e.Description,
+			&date,
+			&e.CategoryID,
+			&e.CategoryName,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("чтение траты: %w", err)
+		}
+
+		e.Date, err = time.Parse("2006-01-02", date)
+		if err != nil {
+			return nil, fmt.Errorf("преобразование даты: %w", err)
+		}
+
+		expenses = append(expenses, e)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("перебор трат: %w", err)
+	}
+
+	return expenses, nil
 }

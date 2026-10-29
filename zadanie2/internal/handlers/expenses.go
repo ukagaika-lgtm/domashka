@@ -20,12 +20,13 @@ import (
 
 // ExpenseHandler не содержит SQL — только вызовы репозитория.
 type ExpenseHandler struct {
-	repo     *repository.ExpenseRepository
-	listTmpl *template.Template
-	formTmpl *template.Template
+	repo         *repository.ExpenseRepository
+	categoryRepo *repository.CategoryRepository
+	listTmpl     *template.Template
+	formTmpl     *template.Template
 }
 
-func NewExpenseHandler(repo *repository.ExpenseRepository, tmplDir string) (*ExpenseHandler, error) {
+func NewExpenseHandler(repo *repository.ExpenseRepository, categoryRepo *repository.CategoryRepository, tmplDir string) (*ExpenseHandler, error) {
 	layout := filepath.Join(tmplDir, "layout.html")
 	list, err := template.ParseFiles(layout, filepath.Join(tmplDir, "list.html"))
 	if err != nil {
@@ -35,12 +36,21 @@ func NewExpenseHandler(repo *repository.ExpenseRepository, tmplDir string) (*Exp
 	if err != nil {
 		return nil, err
 	}
-	return &ExpenseHandler{repo: repo, listTmpl: list, formTmpl: form}, nil
+	return &ExpenseHandler{
+		repo:         repo,
+		categoryRepo: categoryRepo,
+		listTmpl:     list,
+		formTmpl:     form,
+	}, nil
 }
 
 type listPage struct {
-	Title    string
-	Expenses []models.Expense
+	Title      string
+	Expenses   []models.Expense
+	Categories []models.Category
+	CategoryID int64
+	From       string
+	To         string
 }
 
 type formPage struct {
@@ -50,24 +60,62 @@ type formPage struct {
 	Description string
 	Date        string
 	Error       string
+	Categories  []models.Category
+	CategoryID  int64
 }
 
 // GET /expenses
 func (h *ExpenseHandler) List(w http.ResponseWriter, r *http.Request) {
-	expenses, err := h.repo.GetAll()
+	query := r.URL.Query()
+
+	var categoryID int64
+	if value := query.Get("category"); value != "" {
+		id, err := strconv.ParseInt(value, 10, 64)
+		if err != nil || id <= 0 {
+			http.Error(w, "Некорректная категория", http.StatusBadRequest)
+			return
+		}
+		categoryID = id
+	}
+
+	from := query.Get("from")
+	to := query.Get("to")
+
+	expenses, err := h.repo.GetFiltered(categoryID, from, to)
 	if err != nil {
 		serverError(w, err)
 		return
 	}
-	render(w, h.listTmpl, http.StatusOK, listPage{Title: "Мои траты", Expenses: expenses})
+
+	categories, err := h.categoryRepo.GetAll()
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+
+	render(w, h.listTmpl, http.StatusOK, listPage{
+		Title:      "Мои траты",
+		Expenses:   expenses,
+		Categories: categories,
+		CategoryID: categoryID,
+		From:       from,
+		To:         to,
+	})
 }
 
 // GET /expenses/new
 func (h *ExpenseHandler) NewForm(w http.ResponseWriter, r *http.Request) {
+	categories, err := h.categoryRepo.GetAll()
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+
 	render(w, h.formTmpl, http.StatusOK, formPage{
-		Title:  "Новая трата",
-		Action: "/expenses",
-		Date:   time.Now().Format("2006-01-02"),
+		Title:      "Новая трата",
+		Action:     "/expenses",
+		Date:       time.Now().Format("2006-01-02"),
+		Categories: categories,
 	})
 }
 
@@ -100,12 +148,21 @@ func (h *ExpenseHandler) EditForm(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
+
+	categories, err := h.categoryRepo.GetAll()
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+
 	render(w, h.formTmpl, http.StatusOK, formPage{
 		Title:       "Редактирование траты",
 		Action:      fmt.Sprintf("/expenses/%d/edit", id),
 		Amount:      strconv.FormatFloat(e.Amount, 'f', 2, 64),
 		Description: e.Description,
 		Date:        e.Date.Format("2006-01-02"),
+		Categories:  categories,
+		CategoryID:  e.CategoryID,
 	})
 }
 
@@ -161,12 +218,20 @@ func (h *ExpenseHandler) readForm(w http.ResponseWriter, r *http.Request, page *
 	page.Description = strings.TrimSpace(r.FormValue("description"))
 	page.Date = strings.TrimSpace(r.FormValue("date"))
 
+	categoryID, err := strconv.ParseInt(r.FormValue("category_id"), 10, 64)
+	if err != nil || categoryID <= 0 {
+		page.Error = "Выберите категорию"
+		render(w, h.formTmpl, http.StatusBadRequest, page)
+		return models.Expense{}, false
+	}
+
 	e, msg := validate(page.Amount, page.Description, page.Date)
 	if msg != "" {
 		page.Error = msg
 		render(w, h.formTmpl, http.StatusBadRequest, page)
 		return models.Expense{}, false
 	}
+	e.CategoryID = categoryID
 	return e, true
 }
 

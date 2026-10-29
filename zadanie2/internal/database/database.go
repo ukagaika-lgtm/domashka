@@ -34,15 +34,34 @@ func Migrate(db *sql.DB, dir string) error {
 	if len(files) == 0 {
 		return fmt.Errorf("в папке %s нет файлов миграций", dir)
 	}
+
 	sort.Strings(files)
+
 	for _, f := range files {
 		query, err := os.ReadFile(f)
 		if err != nil {
 			return fmt.Errorf("чтение %s: %w", f, err)
 		}
-		if _, err := db.Exec(string(query)); err != nil {
+
+		_, err = db.Exec(string(query))
+		if err != nil {
+			// Если колонка уже существует, пропускаем эту миграцию.
+			if filepath.Base(f) == "003_add_category_to_expenses.sql" {
+				var count int
+				checkErr := db.QueryRow(`
+					SELECT COUNT(*)
+					FROM pragma_table_info('expenses')
+					WHERE name = 'category_id'
+				`).Scan(&count)
+
+				if checkErr == nil && count > 0 {
+					continue
+				}
+			}
+
 			return fmt.Errorf("миграция %s: %w", f, err)
 		}
 	}
+
 	return nil
 }

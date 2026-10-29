@@ -21,7 +21,8 @@ func main() {
 	}
 
 	repo := repository.NewExpenseRepository(db)
-	expenses, err := handlers.NewExpenseHandler(repo, "web/templates")
+	categoryRepo := repository.NewCategoryRepository(db)
+	expenses, err := handlers.NewExpenseHandler(repo, categoryRepo, "web/templates")
 	if err != nil {
 		log.Fatal(err)
 	}

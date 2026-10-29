@@ -1,14 +1,44 @@
 {{define "content"}}
+<form method="GET" action="/expenses">
+  <label>Категория
+    <select name="category">
+      <option value="">Все категории</option>
+      {{range .Categories}}
+        <option value="{{.ID}}" {{if eq .ID $.CategoryID}}selected{{end}}>
+          {{.Name}}
+        </option>
+      {{end}}
+    </select>
+  </label>
+
+  <label>Дата с
+    <input type="date" name="from" value="{{.From}}">
+  </label>
+
+  <label>Дата по
+    <input type="date" name="to" value="{{.To}}">
+  </label>
+
+  <button type="submit">Фильтровать</button>
+  <a href="/expenses">Сбросить</a>
+</form>
 {{if .Expenses}}
 <table>
   <thead>
-    <tr><th>Дата</th><th>Описание</th><th>Сумма, ₽</th><th></th></tr>
+    <tr>
+      <th>Дата</th>
+      <th>Описание</th>
+      <th>Категория</th>
+      <th>Сумма, ₽</th>
+      <th></th>
+    </tr>
   </thead>
   <tbody>
   {{range .Expenses}}
     <tr>
       <td>{{.Date.Format "02.01.2006"}}</td>
       <td>{{.Description}}</td>
+      <td>{{.CategoryName}}</td>
       <td class="num">{{printf "%.2f" .Amount}}</td>
       <td class="actions">
         <a href="/expenses/{{.ID}}/edit">Изменить</a>
