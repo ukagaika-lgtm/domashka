@@ -66,6 +66,11 @@ type formPage struct {
 
 // GET /expenses
 func (h *ExpenseHandler) List(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	query := r.URL.Query()
 
 	var categoryID int64
@@ -81,7 +86,7 @@ func (h *ExpenseHandler) List(w http.ResponseWriter, r *http.Request) {
 	from := query.Get("from")
 	to := query.Get("to")
 
-	expenses, err := h.repo.GetFiltered(categoryID, from, to)
+	expenses, err := h.repo.GetFiltered(userID, categoryID, from, to)
 	if err != nil {
 		serverError(w, err)
 		return
@@ -105,6 +110,11 @@ func (h *ExpenseHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // GET /expenses/new
 func (h *ExpenseHandler) NewForm(w http.ResponseWriter, r *http.Request) {
+	_, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	categories, err := h.categoryRepo.GetAll()
 	if err != nil {
 		serverError(w, err)
@@ -121,11 +131,17 @@ func (h *ExpenseHandler) NewForm(w http.ResponseWriter, r *http.Request) {
 
 // POST /expenses
 func (h *ExpenseHandler) Create(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	page := formPage{Title: "Новая трата", Action: "/expenses"}
 	e, ok := h.readForm(w, r, &page)
 	if !ok {
 		return
 	}
+	e.UserID = userID
 	if err := h.repo.Create(&e); err != nil {
 		serverError(w, err)
 		return
@@ -135,11 +151,16 @@ func (h *ExpenseHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // GET /expenses/{id}/edit
 func (h *ExpenseHandler) EditForm(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	id, ok := pathID(w, r)
 	if !ok {
 		return
 	}
-	e, err := h.repo.GetByID(id)
+	e, err := h.repo.GetByID(id, userID)
 	if errors.Is(err, repository.ErrNotFound) {
 		http.NotFound(w, r)
 		return
@@ -168,6 +189,11 @@ func (h *ExpenseHandler) EditForm(w http.ResponseWriter, r *http.Request) {
 
 // POST /expenses/{id}/edit
 func (h *ExpenseHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	id, ok := pathID(w, r)
 	if !ok {
 		return
@@ -178,6 +204,7 @@ func (h *ExpenseHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	e.ID = id
+	e.UserID = userID
 	err := h.repo.Update(e)
 	if errors.Is(err, repository.ErrNotFound) {
 		http.NotFound(w, r)
@@ -192,11 +219,16 @@ func (h *ExpenseHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 // POST /expenses/{id}/delete
 func (h *ExpenseHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	id, ok := pathID(w, r)
 	if !ok {
 		return
 	}
-	err := h.repo.Delete(id)
+	err := h.repo.Delete(id, userID)
 	if errors.Is(err, repository.ErrNotFound) {
 		http.NotFound(w, r)
 		return
@@ -206,6 +238,15 @@ func (h *ExpenseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/expenses", http.StatusSeeOther)
+}
+
+func requireUserID(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	userID, ok := getUserID(r)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return 0, false
+	}
+	return userID, true
 }
 
 // readForm разбирает и проверяет форму. При ошибке сам показывает форму заново.

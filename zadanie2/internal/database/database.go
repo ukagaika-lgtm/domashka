@@ -59,6 +59,18 @@ func Migrate(db *sql.DB, dir string) error {
 				}
 			}
 
+			if filepath.Base(f) == "006_add_user_id_to_expenses.sql" {
+				var count int
+				checkErr := db.QueryRow(`
+				SELECT COUNT(*)
+				FROM pragma_table_info('expenses')
+				WHERE name = 'user_id'
+				`).Scan(&count)
+				if checkErr == nil && count > 0 {
+					continue
+				}
+			}
+
 			return fmt.Errorf("миграция %s: %w", f, err)
 		}
 	}

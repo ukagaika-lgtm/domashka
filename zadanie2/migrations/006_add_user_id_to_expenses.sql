@@ -1,0 +1,1 @@
+ALTER TABLE expenses ADD COLUMN user_id INTEGER REFERENCES users(id);

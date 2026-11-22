@@ -22,6 +22,13 @@ func main() {
 
 	repo := repository.NewExpenseRepository(db)
 	categoryRepo := repository.NewCategoryRepository(db)
+	userRepo := repository.NewUserRepository(db)
+
+	auth, err := handlers.NewAuthHandler(userRepo, "web/templates")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	expenses, err := handlers.NewExpenseHandler(repo, categoryRepo, "web/templates")
 	if err != nil {
 		log.Fatal(err)
@@ -44,6 +51,10 @@ func main() {
 	mux.HandleFunc("GET /expenses/{id}/edit", expenses.EditForm)
 	mux.HandleFunc("POST /expenses/{id}/edit", expenses.Update)
 	mux.HandleFunc("POST /expenses/{id}/delete", expenses.Delete)
+
+	mux.HandleFunc("/register", auth.Register)
+	mux.HandleFunc("/login", auth.Login)
+	mux.HandleFunc("/logout", auth.Logout)
 
 	log.Println("Сервер запущен: http://localhost:8080/expenses")
 	log.Fatal(http.ListenAndServe(":8080", mux))
