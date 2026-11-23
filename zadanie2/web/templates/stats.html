@@ -1,0 +1,129 @@
+{{define "content"}}
+<h2>Расходы по категориям</h2>
+
+<div>
+  <label>Дата с:
+    <input type="date" id="from">
+  </label>
+
+  <label>Дата по:
+    <input type="date" id="to">
+  </label>
+
+  <button type="button" onclick="loadCategoryStats()">
+    Показать
+  </button>
+</div>
+
+<canvas id="categoryChart"></canvas>
+
+<h2>Расходы по месяцам</h2>
+
+<div>
+  <label>Год:
+    <input type="number" id="year" min="2000" max="2100">
+  </label>
+
+  <button type="button" onclick="loadMonthStats()">
+    Показать
+  </button>
+</div>
+
+<canvas id="monthChart"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+let categoryChart = null;
+let monthChart = null;
+
+const today = new Date();
+const currentYear = today.getFullYear();
+
+document.getElementById("from").value =
+  currentYear + "-01-01";
+
+document.getElementById("to").value =
+  today.toISOString().slice(0, 10);
+
+document.getElementById("year").value = currentYear;
+
+async function loadCategoryStats() {
+  const from = document.getElementById("from").value;
+  const to = document.getElementById("to").value;
+
+  if (!from || !to || from > to) {
+    alert("Проверь выбранный период");
+    return;
+  }
+
+  const response = await fetch(
+    "/api/stats/by-category?from=" + from + "&to=" + to
+  );
+
+  if (!response.ok) {
+    alert("Не удалось загрузить статистику");
+    return;
+  }
+
+  const data = await response.json();
+
+  if (categoryChart) categoryChart.destroy();
+
+  categoryChart = new Chart(
+    document.getElementById("categoryChart"),
+    {
+      type: "pie",
+      data: {
+        labels: data.map(item => item.CategoryName),
+        datasets: [{
+          data: data.map(item => item.Total)
+        }]
+      }
+    }
+  );
+}
+
+async function loadMonthStats() {
+  const year = document.getElementById("year").value;
+
+  const response = await fetch(
+    "/api/stats/by-month?year=" + year
+  );
+
+  if (!response.ok) {
+    alert("Не удалось загрузить статистику");
+    return;
+  }
+
+  const data = await response.json();
+
+  const monthNames = [
+    "Январь", "Февраль", "Март", "Апрель",
+    "Май", "Июнь", "Июль", "Август",
+    "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+  ];
+
+  if (monthChart) monthChart.destroy();
+
+  monthChart = new Chart(
+    document.getElementById("monthChart"),
+    {
+      type: "bar",
+      data: {
+        labels: data.map(item =>
+          monthNames[Number(item.Month) - 1]
+        ),
+        datasets: [{
+          label: "Расходы, ₽",
+          data: data.map(item => item.Total)
+        }]
+      }
+    }
+  );
+}
+
+loadCategoryStats();
+loadMonthStats();
+</script>
+{{end}}

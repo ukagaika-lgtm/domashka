@@ -17,6 +17,16 @@ type ExpenseRepository struct {
 	db *sql.DB
 }
 
+type CategoryStat struct {
+	CategoryName string
+	Total        float64
+}
+
+type MonthStat struct {
+	Month string
+	Total float64
+}
+
 func NewExpenseRepository(db *sql.DB) *ExpenseRepository {
 	return &ExpenseRepository{db: db}
 }
@@ -188,4 +198,79 @@ func (r *ExpenseRepository) GetFiltered(
 	}
 
 	return expenses, nil
+}
+
+func (r *ExpenseRepository) GetStatsByCategory(
+	userID int64,
+	from string,
+	to string,
+) ([]CategoryStat, error) {
+	query := `
+		SELECT c.name, COALESCE(SUM(e.amount), 0)
+		FROM expenses e
+		JOIN categories c ON c.id = e.category_id
+		WHERE e.user_id = ?
+		  AND e.date >= ?
+		  AND e.date <= ?
+		GROUP BY c.id, c.name
+		ORDER BY SUM(e.amount) DESC
+	`
+
+	rows, err := r.db.Query(query, userID, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("статистика по категориям: %w", err)
+	}
+	defer rows.Close()
+
+	var stats []CategoryStat
+
+	for rows.Next() {
+		var stat CategoryStat
+		if err := rows.Scan(&stat.CategoryName, &stat.Total); err != nil {
+			return nil, err
+		}
+		stats = append(stats, stat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return stats, nil
+}
+
+func (r *ExpenseRepository) GetStatsByMonth(
+	userID int64,
+	year string,
+) ([]MonthStat, error) {
+	query := `
+		SELECT strftime('%m', date), SUM(amount)
+		FROM expenses
+		WHERE user_id = ?
+		  AND strftime('%Y', date) = ?
+		GROUP BY strftime('%m', date)
+		ORDER BY strftime('%m', date)
+	`
+
+	rows, err := r.db.Query(query, userID, year)
+	if err != nil {
+		return nil, fmt.Errorf("статистика по месяцам: %w", err)
+	}
+	defer rows.Close()
+
+	var stats []MonthStat
+
+	for rows.Next() {
+		var stat MonthStat
+		if err := rows.Scan(&stat.Month, &stat.Total); err != nil {
+			return nil, err
+		}
+		stats = append(stats, stat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return stats, nil
 }

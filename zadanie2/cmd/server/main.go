@@ -33,6 +33,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	stats := handlers.NewStatsHandler(repo)
 
 	mux := http.NewServeMux()
 
@@ -55,6 +56,10 @@ func main() {
 	mux.HandleFunc("/register", auth.Register)
 	mux.HandleFunc("/login", auth.Login)
 	mux.HandleFunc("/logout", auth.Logout)
+
+	mux.HandleFunc("GET /api/stats/by-category", stats.ByCategory)
+	mux.HandleFunc("GET /api/stats/by-month", stats.ByMonth)
+	mux.HandleFunc("GET /stats", stats.Page)
 
 	log.Println("Сервер запущен: http://localhost:8080/expenses")
 	log.Fatal(http.ListenAndServe(":8080", mux))
