@@ -37,6 +37,8 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("/", handlers.NotFound)
+
 	// Этап 1
 	mux.HandleFunc("GET /{$}", handlers.Home)
 	mux.HandleFunc("GET /about", handlers.About)
@@ -62,5 +64,8 @@ func main() {
 	mux.HandleFunc("GET /stats", stats.Page)
 
 	log.Println("Сервер запущен: http://localhost:8080/expenses")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	handler := handlers.LoggingMiddleware(
+		handlers.RecoveryMiddleware(mux),
+	)
+	log.Fatal(http.ListenAndServe(":8080", handler))
 }

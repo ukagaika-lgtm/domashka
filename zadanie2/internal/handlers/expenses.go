@@ -259,9 +259,30 @@ func (h *ExpenseHandler) readForm(w http.ResponseWriter, r *http.Request, page *
 	page.Description = strings.TrimSpace(r.FormValue("description"))
 	page.Date = strings.TrimSpace(r.FormValue("date"))
 
+	categories, err := h.categoryRepo.GetAll()
+	if err != nil {
+		serverError(w, err)
+		return models.Expense{}, false
+	}
+	page.Categories = categories
+
 	categoryID, err := strconv.ParseInt(r.FormValue("category_id"), 10, 64)
 	if err != nil || categoryID <= 0 {
 		page.Error = "Выберите категорию"
+		render(w, h.formTmpl, http.StatusBadRequest, page)
+		return models.Expense{}, false
+	}
+
+	categoryExists := false
+	for _, category := range page.Categories {
+		if int64(category.ID) == categoryID {
+			categoryExists = true
+			break
+		}
+	}
+
+	if !categoryExists {
+		page.Error = "Выберите существующую категорию"
 		render(w, h.formTmpl, http.StatusBadRequest, page)
 		return models.Expense{}, false
 	}
